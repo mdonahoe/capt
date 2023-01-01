@@ -93,7 +93,7 @@ def explore(man):
 def eat_blocker(man):
     if man[FOOD] < 1: return FOOD
     if man[HEALTH] > 99: return HEALTH
-    if man[THREAT] > 1: return THREAT
+    if man[THREAT] > 0: return THREAT
     return ''
 
 def do_eat(man):
@@ -234,7 +234,7 @@ def party(man):
     return do_party(man)
 
 
-actions = [
+ACTIONS = [
     ('eat', eat_blocker, eat),
     ('rest', rest_blocker, rest), 
     ('explore', explore_blocker, explore),
@@ -245,9 +245,9 @@ actions = [
     ('party', party_blocker, party),
 ]
 
-blocker_map = dict((act, blocker) for (act, blocker, _) in actions)
+blocker_map = dict((act, blocker) for (act, blocker, _) in ACTIONS)
 
-resources = [
+RESOURCES = [
     HEALTH,
     ENERGY,
     FOOD,
@@ -256,101 +256,107 @@ resources = [
     THREAT,
 ]
 
-skills = [
+SKILLS = [
     EXPLORING_SKILL,
     FIGHTING_SKILL,
 ]
 
 
-def input_actions(act_map):
-    while True:
-        acts = raw_input('>>> ').split()
-        for act in act_map:
-            if act in act_map:
-                return acts
+def input_actions():
+    acts = input('>>> ').split()
+    return acts
+
+def print_stats(townsfolk):
+    print('RESOURCES:')
+    for r in RESOURCES:
+        row = [r]
+        minr = min(f[r] for f in townsfolk)
+        maxr = max(f[r] for f in townsfolk)
+        if len(townsfolk) > 0:
+            mean = sum(f[r] for f in townsfolk) / len(townsfolk)
         else:
-            print('invalid actions {}. expected one of {}'.format(acts, ', '.join(act_map.keys())))
+            mean = 0
+        print(r, minr, mean, maxr)
 
-def loop(townsfolk):
+    print('\nSKILLS:')
+    for r in SKILLS:
+        row = [r]
+        minr = min(f[r] for f in townsfolk)
+        maxr = max(f[r] for f in townsfolk)
+        if len(townsfolk) > 0:
+            mean = sum(f[r] for f in townsfolk) / len(townsfolk)
+        else:
+            mean = 0
+        print(r, minr, mean, maxr)
+
+    print('\nACTIONS:')
+    act_map = {}
+    for act_name, act_blocker, act_func, in ACTIONS:
+        num_can_act = 0
+        for f in townsfolk:
+            if not act_blocker(f):
+                num_can_act += 1
+        if num_can_act > 0:
+            act_map[act_name] = act_func
+            print("{} ({})".format(act_name, num_can_act))
+
+
+def eval_actions(acts, townsfolk, max_loops=300):
+    num_loops = max_loops
+    while num_loops > 0:
+        num_loops -= 1
+        did_any = False
+        for act in acts:
+
+            act_map = {}
+            for act_name, act_blocker, act_func, in ACTIONS:
+                num_can_act = 0
+                for f in townsfolk:
+                    if not act_blocker(f):
+                        num_can_act += 1
+                if num_can_act > 0:
+                    act_map[act_name] = act_func
+
+            if act not in act_map:
+                print(act, "not in ", act_map)
+                continue
+            did_any = True
+
+            action = act_map[act]
+            num_rounds = 0
+            num_can = 1
+            num_actors = 0
+            start_size = len(townsfolk)
+            while num_can > 0:
+                new_town = []
+                for f in townsfolk:
+                    new_town.extend(action(f))
+                num_rounds += 1
+                townsfolk = new_town
+                num_can = 0
+                for f in townsfolk:
+                    if blocker_map[act](f):
+                        pass
+                    else:
+                        num_can += 1
+            print('{} performed {} for {} rounds'.format(start_size, act, num_rounds))
+        if did_any is False:
+            break
+    return townsfolk
+
+
+def main(townsfolk):
     while len(townsfolk):
-        print('RESOURCES:')
-        for r in resources:
-            row = [r]
-            minr = min(f[r] for f in townsfolk)
-            maxr = max(f[r] for f in townsfolk)
-            if len(townsfolk) > 0:
-                mean = sum(f[r] for f in townsfolk) / len(townsfolk)
-            else:
-                mean = 0
-            print(r, minr, mean, maxr)
-
-        print('\nSKILLS:')
-        for r in skills:
-            row = [r]
-            minr = min(f[r] for f in townsfolk)
-            maxr = max(f[r] for f in townsfolk)
-            if len(townsfolk) > 0:
-                mean = sum(f[r] for f in townsfolk) / len(townsfolk)
-            else:
-                mean = 0
-            print(r, minr, mean, maxr)
-
-        print('\nACTIONS:')
-        act_map = {}
-        for act_name, act_blocker, act_func, in actions:
-            num_can_act = 0
-            for f in townsfolk:
-                if not act_blocker(f):
-                    num_can_act += 1
-            if num_can_act > 0:
-                act_map[act_name] = act_func
-                print("{} ({})".format(act_name, num_can_act))
-
-        acts = input_actions(act_map)
-        num_loops = 300
-        while num_loops > 0:
-            num_loops -= 1
-            did_any = False
-            for act in acts:
-
-                act_map = {}
-                for act_name, act_blocker, act_func, in actions:
-                    num_can_act = 0
-                    for f in townsfolk:
-                        if not act_blocker(f):
-                            num_can_act += 1
-                    if num_can_act > 0:
-                        act_map[act_name] = act_func
-
-                if act not in act_map:
-                    print(act, "not in ", act_map)
-                    continue
-                did_any = True
-
-                action = act_map[act]
-                num_rounds = 0
-                num_can = 1
-                num_actors = 0
-                start_size = len(townsfolk)
-                while num_can > 0:
-                    new_town = []
-                    for f in townsfolk:
-                        new_town.extend(action(f))
-                    num_rounds += 1
-                    townsfolk = new_town
-                    num_can = 0
-                    for f in townsfolk:
-                        if blocker_map[act](f):
-                            pass
-                        else:
-                            num_can += 1
-                print('{} performed {} for {} rounds'.format(start_size, act, num_rounds))
-            if did_any is False:
-                break
+        print_stats(townsfolk)
+        acts = input_actions()
+        townsfolk = eval_actions(acts, townsfolk)
         print('Your town is now {} people'.format(len(townsfolk)))
     if len(townsfolk):
         print('congrats')
     else:
         print('your town has died.')
 
-loop([create_man() for _ in range(10)])
+
+if __name__ == '__main__':
+    starting_town_size = 10
+    main([create_man() for _ in range(starting_town_size)])
