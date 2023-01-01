@@ -6,9 +6,24 @@ HEALTH = 'health'
 ENERGY = 'energy'
 FOOD = 'food'
 THREAT = 'threat'
+CLOTHES = 'clothes'
+TOOLS = 'tools'
 
 EXPLORING_SKILL = 'explorer'
 FIGHTING_SKILL = 'fighter'
+
+
+"""
+
+Problems:
+1. Lots of people die after the first exploration.
+2. What's the goal? Last 365 days?
+3. Reproduction happens too quickly.
+4. Bad decisions don't lead to deaths.
+5. Everyone is independent. No sharing, mating, teaching, etc.
+
+
+"""
 
 
 def create_man():
@@ -46,7 +61,7 @@ def do_explore(man):
 
 def do_rest(man):
     man[HEALTH] -= 1
-    man[ENERGY] += 5
+    man[ENERGY] += max(1, man[CLOTHES])
     return [man]
 
 
@@ -136,13 +151,21 @@ def do_fight(man):
         man[ENERGY] -= 20
     else:
         man[THREAT] -= 1
+    if man[THREAT] < 0:
+        man[THREAT] = 0
 
     # if there is still a threat, lose health
     if man[THREAT] > 0 or man[FIGHTING_SKILL] < 10:
-        man[HEALTH] -= 25
+        damage = 25
     else:
-        # TODO:negative could be interesting to try, with limits
-        man[THREAT] = 0
+        damage = 0
+
+    if man[CLOTHES] > damage:
+        man[CLOTHES] -= damage
+    elif man[CLOTHES] > 0:
+        damage -= man[CLOTHES]
+        man[CLOTHES] = 0
+        man[HEALTH] -= damage
     return [man]
 
 
@@ -169,6 +192,23 @@ def die(man):
         return [man]
     return do_die(man)
 
+def sew_blocker(man):
+    if man[HEALTH] < 1: return HEALTH
+    if man[ENERGY] < 10: return ENERGY
+    if man[CLOTHES] > 99: return CLOTHES
+    return ''
+
+def do_sew(man):
+    man[CLOTHES] += 1
+    man[ENERGY] -= 10
+    return [man]
+
+def sew(man):
+    blocker = sew_blocker(man)
+    if blocker:
+        return [man]
+    return do_sew(man)
+
 
 actions = [
     ('eat', eat_blocker, eat),
@@ -177,6 +217,7 @@ actions = [
     ('reproduce', reproduce_blocker, reproduce),
     ('fight', fight_blocker, fight),
     ('die', die_blocker, die),
+    ('sew', sew_blocker, sew),
 ]
 
 blocker_map = dict((act, blocker) for (act, blocker, _) in actions)
@@ -185,6 +226,7 @@ resources = [
     HEALTH,
     ENERGY,
     FOOD,
+    CLOTHES,
     THREAT,
 ]
 
