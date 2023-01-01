@@ -8,6 +8,7 @@ FOOD = 'food'
 THREAT = 'threat'
 CLOTHES = 'clothes'
 TOOLS = 'tools'
+HAPPINESS = 'happy'
 
 EXPLORING_SKILL = 'explorer'
 FIGHTING_SKILL = 'fighter'
@@ -50,18 +51,19 @@ def do_explore(man):
         man[THREAT] += 1
     elif man[EXPLORING_SKILL] == 1:
         man[THREAT] += 100
-    elif man[EXPLORING_SKILL] > 15:
-        man[THREAT] += 5
-    elif man[EXPLORING_SKILL] < 5:
-        man[THREAT] += 50
     else:
         man[THREAT] += 20
+    man[HAPPINESS] -= man[THREAT]
+    if man[HAPPINESS] < 0:
+        man[HAPPINESS] = 0
     return [man]
 
 
 def do_rest(man):
     man[HEALTH] -= 1
     man[ENERGY] += max(1, man[CLOTHES])
+    if man[ENERGY] > 99:
+        man[ENERGY] = 100
     return [man]
 
 
@@ -108,6 +110,7 @@ def eat(man):
 
 def reproduce_blocker(man):
     if man[HEALTH] <= 99: return HEALTH
+    if man[HAPPINESS] <= 99: return HAPPINESS
     if man[THREAT] > 0: return THREAT
     if man[ENERGY] < 50: return ENERGY
     return ''
@@ -156,7 +159,7 @@ def do_fight(man):
 
     # if there is still a threat, lose health
     if man[THREAT] > 0 or man[FIGHTING_SKILL] < 10:
-        damage = 25
+        damage = 45
     else:
         damage = 0
 
@@ -165,7 +168,9 @@ def do_fight(man):
     elif man[CLOTHES] > 0:
         damage -= man[CLOTHES]
         man[CLOTHES] = 0
-        man[HEALTH] -= damage
+
+    man[HEALTH] -= damage
+
     return [man]
 
 
@@ -193,6 +198,7 @@ def die(man):
     return do_die(man)
 
 def sew_blocker(man):
+    if man[THREAT] > 0: return THREAT
     if man[HEALTH] < 1: return HEALTH
     if man[ENERGY] < 10: return ENERGY
     if man[CLOTHES] > 99: return CLOTHES
@@ -209,6 +215,24 @@ def sew(man):
         return [man]
     return do_sew(man)
 
+def party_blocker(man):
+    if man[HEALTH] < 50: return HEALTH
+    if man[ENERGY] < 1: return HEALTH
+    if man[THREAT] > 0: return HEALTH
+    if man[HAPPINESS] > 99: return HAPPINESS
+    return ''
+
+def do_party(man):
+    man[HAPPINESS] += 1
+    man[ENERGY] -= 1
+    return [man]
+
+def party(man):
+    blocker = party_blocker(man)
+    if blocker:
+        return [man]
+    return do_party(man)
+
 
 actions = [
     ('eat', eat_blocker, eat),
@@ -218,6 +242,7 @@ actions = [
     ('fight', fight_blocker, fight),
     ('die', die_blocker, die),
     ('sew', sew_blocker, sew),
+    ('party', party_blocker, party),
 ]
 
 blocker_map = dict((act, blocker) for (act, blocker, _) in actions)
@@ -227,6 +252,7 @@ resources = [
     ENERGY,
     FOOD,
     CLOTHES,
+    HAPPINESS,
     THREAT,
 ]
 
