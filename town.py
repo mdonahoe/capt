@@ -23,30 +23,30 @@ def create_man():
 def explore_blocker(man):
     if man[HEALTH] < 1: return HEALTH
     if man[FOOD] > 99: return FOOD
-    if man[ENERGY] < 10: return ENERGY
-    if man[THREAT] > 10: return THREAT
+    if man[ENERGY] < 20: return ENERGY
+    if man[THREAT] > max(0, 20 - man[EXPLORING_SKILL]): return THREAT
     return ''
 
 
 def do_explore(man):
     man[ENERGY] -= 20
-    man[FOOD] += man[EXPLORING_SKILL]
+    man[FOOD] += 2 * man[EXPLORING_SKILL]
     if man[EXPLORING_SKILL] == 20:
-        pass
-    elif man[EXPLORING_SKILL] == 1:
-        man[THREAT] += 50
-    elif man[EXPLORING_SKILL] > 15:
         man[THREAT] += 1
+    elif man[EXPLORING_SKILL] == 1:
+        man[THREAT] += 100
+    elif man[EXPLORING_SKILL] > 15:
+        man[THREAT] += 5
     elif man[EXPLORING_SKILL] < 5:
-        man[THREAT] += 20
+        man[THREAT] += 50
     else:
-        man[THREAT] += 10
+        man[THREAT] += 20
     return [man]
 
 
 def do_rest(man):
     man[HEALTH] -= 1
-    man[ENERGY] += 10
+    man[ENERGY] += 5
     return [man]
 
 
@@ -132,14 +132,14 @@ def fight_blocker(man):
 
 def do_fight(man):
     if man[ENERGY] > 0:
-        man[THREAT] -= 1 + man[FIGHTING_SKILL]
-        man[ENERGY] -= 10
+        man[THREAT] -= 2 * man[FIGHTING_SKILL]
+        man[ENERGY] -= 20
     else:
         man[THREAT] -= 1
 
     # if there is still a threat, lose health
     if man[THREAT] > 0 or man[FIGHTING_SKILL] < 10:
-        man[HEALTH] -= max(0, 20 - man[FIGHTING_SKILL])
+        man[HEALTH] -= 25
     else:
         # TODO:negative could be interesting to try, with limits
         man[THREAT] = 0
@@ -239,7 +239,7 @@ def loop(townsfolk):
                 print("{} ({})".format(act_name, num_can_act))
 
         acts = input_actions(act_map)
-        num_loops = 10
+        num_loops = 300
         while num_loops > 0:
             num_loops -= 1
             did_any = False
